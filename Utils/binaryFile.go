@@ -1,6 +1,7 @@
 package Utils
 
 import (
+	"bufio"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -38,7 +39,9 @@ func WriteToFile(filename string, numberOfElements int64) {
 	file := createOrOpenFile(filename)
 	defer file.Close()
 
-	err := binary.Write(file, binary.NativeEndian, numberOfElements)
+	writer := bufio.NewWriter(file)
+
+	err := binary.Write(writer, binary.NativeEndian, numberOfElements)
 	if err != nil {
 		logger.Fatal("Error writing NumberOfElements | Error: %s", err)
 	}
@@ -50,7 +53,7 @@ func WriteToFile(filename string, numberOfElements int64) {
 		randNum := randSource.Int31()
 		logger.Debug("Write function | Written number: %d", randNum)
 
-		err := binary.Write(file, binary.NativeEndian, randNum)
+		err := binary.Write(writer, binary.NativeEndian, randNum)
 		if err != nil {
 			logger.Fatal("Error writing Element | Error: %s", err)
 		}
@@ -67,12 +70,14 @@ func ReadFromFile(filename string, numberOfElements int64) {
 	file := createOrOpenFile(filename)
 	defer file.Close()
 
+	reader := bufio.NewReader(file)
+
 	_, err := file.Seek(0, 0)
 	if err != nil {
 		logger.Fatal("Cannot seek file | Error: %s", err)
 	}
 
-	err = binary.Read(file, binary.NativeEndian, &numberOfItemsRead)
+	err = binary.Read(reader, binary.NativeEndian, &numberOfItemsRead)
 	if err != nil {
 		logger.Fatal("Cannot read number of generated numbers from file | Error: %s", err)
 	}
@@ -80,7 +85,7 @@ func ReadFromFile(filename string, numberOfElements int64) {
 
 	for i = 0; i < numberOfElements; i++ {
 		var item int32
-		err = binary.Read(file, binary.NativeEndian, &item)
+		err = binary.Read(reader, binary.NativeEndian, &item)
 		if err != nil {
 			logger.Fatal("Cannot read generated numbers from file | Error: %s", err)
 		}
@@ -99,25 +104,27 @@ func VerifySortedFile(filename string) bool {
 	file := createOrOpenFile(filename)
 	defer file.Close()
 
+	reader := bufio.NewReader(file)
+
 	_, err := file.Seek(0, 0)
 	if err != nil {
 		logger.Fatal("Cannot seek file | Error: %s", err)
 	}
 
-	err = binary.Read(file, binary.NativeEndian, &numberOfItemsRead)
+	err = binary.Read(reader, binary.NativeEndian, &numberOfItemsRead)
 	if err != nil {
 		logger.Fatal("Cannot read number of generated numbers from file | Error: %s", err)
 	}
 	logger.Debug(fmt.Sprintf("Verify function | Read number of elements: %d", numberOfItemsRead))
 
-	err = binary.Read(file, binary.NativeEndian, &previous)
+	err = binary.Read(reader, binary.NativeEndian, &previous)
 	if err != nil {
 		logger.Fatal("Cannot read first generated number from file | Error: %s", err)
 	}
 	logger.Debug(fmt.Sprintf("Verify function | Read first generated number: %d", previous))
 
 	for i = 0; i < numberOfItemsRead-1; i++ {
-		err = binary.Read(file, binary.NativeEndian, &current)
+		err = binary.Read(reader, binary.NativeEndian, &current)
 		if err != nil {
 			logger.Fatal("Cannot read generated numbers from file | Error: %s", err)
 		}
