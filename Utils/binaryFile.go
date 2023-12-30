@@ -3,18 +3,19 @@ package Utils
 import (
 	"encoding/binary"
 	"errors"
-	"log"
+	"fmt"
+	"github.com/CezikLikeWhat/PRIR_Sorting/logger"
 	"math/rand"
 	"os"
-	"sync"
 	"time"
 )
 
-func CreateFile(path string) *os.File {
+// createOrOpenFile - Function responsible for opening or creating a file when one does not exist
+func createOrOpenFile(path string) *os.File {
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		file, err := os.Create(path)
 		if err != nil {
-			log.Panicf("Cannot create input file | Error: %s", err)
+			logger.Fatal("Cannot create input fileError: %s", err)
 		}
 
 		return file
@@ -23,132 +24,109 @@ func CreateFile(path string) *os.File {
 	file, err := os.OpenFile(path, os.O_RDWR, 0755)
 	if err != nil {
 		if err != nil {
-			log.Panicf("Cannot open input file | Error: %s", err)
+			logger.Fatal("Cannot open input file | Error: %s", err)
 		}
 	}
 
 	return file
 }
 
-func WriteToFile(file *os.File, numberOfElements int64) {
+// WriteToFile - Function responsible for generating the input file for sorting
+func WriteToFile(filename string, numberOfElements int64) {
 	var i int64
+
+	file := createOrOpenFile(filename)
+	defer file.Close()
 
 	err := binary.Write(file, binary.NativeEndian, numberOfElements)
 	if err != nil {
-		log.Fatalf("Error writing NumberOfElements | Error: %s", err)
+		logger.Fatal("Error writing NumberOfElements | Error: %s", err)
 	}
-	if IsDebugMode {
-		log.Printf("| Write function | Written number of elements: %d", numberOfElements)
-	}
+	logger.Debug("Write function | Written number of elements: %d", numberOfElements)
 
 	source := rand.NewSource(time.Now().UnixNano())
 	randSource := rand.New(source)
 	for i = 0; i < numberOfElements; i++ {
 		randNum := randSource.Int31()
-		if IsDebugMode {
-			log.Printf("| Write function | Written number: %d", randNum)
-		}
+		logger.Debug("Write function | Written number: %d", randNum)
+
 		err := binary.Write(file, binary.NativeEndian, randNum)
 		if err != nil {
-			log.Fatalf("Error writing Element | Error: %s", err)
+			logger.Fatal("Error writing Element | Error: %s", err)
 		}
 	}
 }
 
-func WriteToFileAsync(file *os.File, numberOfElements int64) {
-	var wg sync.WaitGroup
-
-	err := binary.Write(file, binary.NativeEndian, numberOfElements)
-	if err != nil {
-		log.Fatalf("Error writing NumberOfElements | Error: %s", err)
-	}
-	if IsDebugMode {
-		log.Printf("| Write function | Written number of elements: %d", numberOfElements)
-	}
-
-	wg.Add(int(numberOfElements))
-	for i := int64(0); i < numberOfElements; i++ {
-		go func(index int64) {
-			defer wg.Done()
-			source := rand.NewSource(time.Now().UnixNano())
-			randSource := rand.New(source)
-			randNum := randSource.Int31()
-			if IsDebugMode {
-				log.Printf("| Write function | Written number: %d", randNum)
-			}
-			err := binary.Write(file, binary.NativeEndian, randNum)
-			if err != nil {
-				log.Fatalf("Error writing Element | Error: %s", err)
-			}
-		}(i)
-	}
-
-	wg.Wait()
-}
-
-func ReadFromFile(file *os.File, numberOfElements int64) {
+// ReadFromFile - For debugging purposes
+func ReadFromFile(filename string, numberOfElements int64) {
 	var (
 		i                 int64
 		numberOfItemsRead int64
 	)
+
+	file := createOrOpenFile(filename)
+	defer file.Close()
+
 	_, err := file.Seek(0, 0)
 	if err != nil {
-		log.Fatalf("Cannot seek file | Error: %s", err)
+		logger.Fatal("Cannot seek file | Error: %s", err)
 	}
 
 	err = binary.Read(file, binary.NativeEndian, &numberOfItemsRead)
-	if IsDebugMode {
-		log.Printf("Read function | Read number of elements: %d", numberOfItemsRead)
-	}
 	if err != nil {
-		log.Fatalf("Cannot read number of generated numbers from file | Error: %s", err)
+		logger.Fatal("Cannot read number of generated numbers from file | Error: %s", err)
 	}
+	logger.Debug("Read function | Read number of elements: %d", numberOfItemsRead)
 
 	for i = 0; i < numberOfElements; i++ {
 		var item int32
 		err = binary.Read(file, binary.NativeEndian, &item)
-		if IsDebugMode {
-			log.Printf("Read function | Read number: %d", item)
-		}
 		if err != nil {
-			log.Fatalf("Cannot read generated numbers from file | Error: %s", err)
+			logger.Fatal("Cannot read generated numbers from file | Error: %s", err)
 		}
+		logger.Debug("Read function | Read number: %d", item)
 	}
 }
 
-func ReadFromFileAsync(file *os.File, numberOfElements int64) {
+func VerifySortedFile(filename string) bool {
 	var (
-		wg                sync.WaitGroup
+		i                 int64
 		numberOfItemsRead int64
+		previous          int32
+		current           int32
 	)
+
+	file := createOrOpenFile(filename)
+	defer file.Close()
 
 	_, err := file.Seek(0, 0)
 	if err != nil {
-		log.Fatalf("Cannot seek file | Error: %s", err)
+		logger.Fatal("Cannot seek file | Error: %s", err)
 	}
 
 	err = binary.Read(file, binary.NativeEndian, &numberOfItemsRead)
-	if IsDebugMode {
-		log.Printf("Read function | Read number of elements: %d", numberOfItemsRead)
-	}
 	if err != nil {
-		log.Fatalf("Cannot read number of generated numbers from file | Error: %s", err)
+		logger.Fatal("Cannot read number of generated numbers from file | Error: %s", err)
+	}
+	logger.Debug(fmt.Sprintf("Verify function | Read number of elements: %d", numberOfItemsRead))
+
+	err = binary.Read(file, binary.NativeEndian, &previous)
+	if err != nil {
+		logger.Fatal("Cannot read first generated number from file | Error: %s", err)
+	}
+	logger.Debug(fmt.Sprintf("Verify function | Read first generated number: %d", previous))
+
+	for i = 0; i < numberOfItemsRead-1; i++ {
+		err = binary.Read(file, binary.NativeEndian, &current)
+		if err != nil {
+			logger.Fatal("Cannot read generated numbers from file | Error: %s", err)
+		}
+		logger.Debug(fmt.Sprintf("Verify function | Read number: %d", current))
+
+		if previous > current {
+			return false
+		}
 	}
 
-	wg.Add(int(numberOfElements))
-	for i := int64(0); i < numberOfElements; i++ {
-		go func() {
-			defer wg.Done()
-			var item int32
-			err = binary.Read(file, binary.NativeEndian, &item)
-			if IsDebugMode {
-				log.Printf("Read function | Read number: %d", item)
-			}
-			if err != nil {
-				log.Fatalf("Cannot read generated numbers from file | Error: %s", err)
-			}
-		}()
-	}
-
-	wg.Wait()
+	return true
 }

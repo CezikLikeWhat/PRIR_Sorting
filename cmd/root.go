@@ -1,8 +1,11 @@
 package cmd
 
 import (
-	"github.com/CezikLikeWhat/PRIR_Sorting/Utils"
+	"fmt"
+	"github.com/CezikLikeWhat/PRIR_Sorting/configuration"
 	"github.com/spf13/cobra"
+	"log"
+	"time"
 )
 
 var RootCmd = &cobra.Command{
@@ -16,16 +19,28 @@ Its functionalities are:
 Implementations can be found at https://github.com/CezikLikeWhat/PRIR_Sorting`,
 	Example: "go-sort <TODO>",
 	Version: "1.0.0",
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if configuration.TimeMeasuring {
+			configuration.AppTimer.Start = time.Now()
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		err := cmd.Help()
 		if err != nil {
-			return
+			log.Fatalf("Cannot display help message | Error: %s", err)
+		}
+	},
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		if configuration.TimeMeasuring {
+			configuration.AppTimer.Elapsed = time.Since(configuration.AppTimer.Start)
+			fmt.Printf("Action took: %s\n", configuration.AppTimer.Elapsed)
 		}
 	},
 }
 
 func init() {
-	inputCmd.Flags().BoolVarP(&Utils.IsDebugMode, "debug", "d", false, "Run command with debug messages")
+	inputCmd.Flags().BoolVarP(&configuration.IsDebugMode, "debug", "d", false, "Run command with debug messages")
+	inputCmd.Flags().BoolVarP(&configuration.TimeMeasuring, "time", "t", false, "Run command with time measuring")
 }
 
 func Execute() {
