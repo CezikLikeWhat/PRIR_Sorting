@@ -19,5 +19,5 @@ func Info(message string, variables ...any) {
 }
 
 func Fatal(message string, variables ...any) {
-	log.Fatalf("[FATAL] %s\n", fmt.Sprintf(message, variables...))
+	log.Panicf("[FATAL] %s\n", fmt.Sprintf(message, variables...))
 }

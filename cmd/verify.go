@@ -28,5 +28,5 @@ var verifyCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(verifyCmd)
 
-	verifyCmd.Flags().StringVarP(&nameOfFileToVerify, "file", "f", "input.bin", "Name of the binary file to check for sorting correctness")
+	verifyCmd.Flags().StringVarP(&nameOfFileToVerify, "file", "f", "output.bin", "Name of the binary file to check for sorting correctness")
 }

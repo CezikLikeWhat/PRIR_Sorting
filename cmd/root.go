@@ -39,8 +39,8 @@ Implementations can be found at https://github.com/CezikLikeWhat/PRIR_Sorting`,
 }
 
 func init() {
-	inputCmd.Flags().BoolVarP(&configuration.IsDebugMode, "debug", "d", false, "Run command with debug messages")
-	inputCmd.Flags().BoolVarP(&configuration.TimeMeasuring, "time", "t", false, "Run command with time measuring")
+	RootCmd.PersistentFlags().BoolVarP(&configuration.IsDebugMode, "debug", "d", false, "Run command with debug messages")
+	RootCmd.PersistentFlags().BoolVarP(&configuration.TimeMeasuring, "time", "t", false, "Run command with time measuring")
 }
 
 func Execute() {

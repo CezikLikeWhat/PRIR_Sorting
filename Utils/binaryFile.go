@@ -34,12 +34,11 @@ func createOrOpenFile(path string) *os.File {
 
 // WriteToFile - Function responsible for generating the input file for sorting
 func WriteToFile(filename string, numberOfElements int64) {
-	var i int64
-
 	file := createOrOpenFile(filename)
 	defer file.Close()
 
 	writer := bufio.NewWriter(file)
+	defer writer.Flush()
 
 	err := binary.Write(writer, binary.NativeEndian, numberOfElements)
 	if err != nil {
@@ -49,7 +48,7 @@ func WriteToFile(filename string, numberOfElements int64) {
 
 	source := rand.NewSource(time.Now().UnixNano())
 	randSource := rand.New(source)
-	for i = 0; i < numberOfElements; i++ {
+	for i := int64(0); i < numberOfElements; i++ {
 		randNum := randSource.Int31()
 		logger.Debug("Write function | Written number: %d", randNum)
 
@@ -72,12 +71,7 @@ func ReadFromFile(filename string, numberOfElements int64) {
 
 	reader := bufio.NewReader(file)
 
-	_, err := file.Seek(0, 0)
-	if err != nil {
-		logger.Fatal("Cannot seek file | Error: %s", err)
-	}
-
-	err = binary.Read(reader, binary.NativeEndian, &numberOfItemsRead)
+	err := binary.Read(reader, binary.NativeEndian, &numberOfItemsRead)
 	if err != nil {
 		logger.Fatal("Cannot read number of generated numbers from file | Error: %s", err)
 	}
@@ -95,7 +89,6 @@ func ReadFromFile(filename string, numberOfElements int64) {
 
 func VerifySortedFile(filename string) bool {
 	var (
-		i                 int64
 		numberOfItemsRead int64
 		previous          int32
 		current           int32
@@ -106,12 +99,7 @@ func VerifySortedFile(filename string) bool {
 
 	reader := bufio.NewReader(file)
 
-	_, err := file.Seek(0, 0)
-	if err != nil {
-		logger.Fatal("Cannot seek file | Error: %s", err)
-	}
-
-	err = binary.Read(reader, binary.NativeEndian, &numberOfItemsRead)
+	err := binary.Read(reader, binary.NativeEndian, &numberOfItemsRead)
 	if err != nil {
 		logger.Fatal("Cannot read number of generated numbers from file | Error: %s", err)
 	}
@@ -123,9 +111,8 @@ func VerifySortedFile(filename string) bool {
 	}
 	logger.Debug(fmt.Sprintf("Verify function | Read first generated number: %d", previous))
 
-	for i = 0; i < numberOfItemsRead-1; i++ {
-		err = binary.Read(reader, binary.NativeEndian, &current)
-		if err != nil {
+	for i := int64(0); i < numberOfItemsRead-1; i++ {
+		if err = binary.Read(reader, binary.NativeEndian, &current); err != nil {
 			logger.Fatal("Cannot read generated numbers from file | Error: %s", err)
 		}
 		logger.Debug(fmt.Sprintf("Verify function | Read number: %d", current))
@@ -133,7 +120,30 @@ func VerifySortedFile(filename string) bool {
 		if previous > current {
 			return false
 		}
+
+		previous = current
 	}
 
 	return true
+}
+
+func WriteDataToOutputFile(filename string, numberOfElements int64, data []int32) {
+	file := createOrOpenFile(filename)
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	defer writer.Flush()
+
+	err := binary.Write(writer, binary.NativeEndian, numberOfElements)
+	if err != nil {
+		logger.Fatal("Error writing NumberOfElements | Error: %s", err)
+	}
+	logger.Debug("Write function | Written number of elements: %d", numberOfElements)
+
+	for _, element := range data {
+		err := binary.Write(writer, binary.NativeEndian, element)
+		if err != nil {
+			logger.Fatal("Error writing Element | Error: %s", err)
+		}
+	}
 }
