@@ -1,6 +1,6 @@
 
 input:
-	go run main.go input --number 10 --time
+	go run main.go input --number 100000000 --time
 
 sort:
 	go run main.go sort -t

@@ -3,13 +3,13 @@ package cmd
 import (
 	"github.com/CezikLikeWhat/PRIR_Sorting/Utils"
 	"github.com/spf13/cobra"
+	"runtime"
 )
 
 var (
 	numberOfThreads       int32
 	nameOfInputFileToSort string
 	nameOfOutputFile      string
-	threshold             int64
 )
 
 var sortCmd = &cobra.Command{
@@ -18,15 +18,14 @@ var sortCmd = &cobra.Command{
 	Example: "go-sort sort <TODO>",
 	Version: "1.0.0",
 	Run: func(cmd *cobra.Command, args []string) {
-		Utils.Sort(nameOfInputFileToSort, nameOfOutputFile, numberOfThreads, threshold)
+		Utils.Sort(nameOfInputFileToSort, nameOfOutputFile, numberOfThreads)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(sortCmd)
 
-	sortCmd.Flags().Int32VarP(&numberOfThreads, "threads", "g", 10, "Number of threads")
-	sortCmd.Flags().Int64VarP(&threshold, "threshold", "k", 10000, "Number of threshold")
+	sortCmd.Flags().Int32VarP(&numberOfThreads, "threads", "g", int32(runtime.NumCPU()), "Number of threads")
 	sortCmd.Flags().StringVarP(&nameOfInputFileToSort, "input", "f", "input.bin", "Name of input file")
 	sortCmd.Flags().StringVarP(&nameOfOutputFile, "output", "o", "output.bin", "Name of output file")
 }
