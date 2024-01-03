@@ -5,6 +5,7 @@ import (
 	"container/heap"
 	"encoding/binary"
 	"fmt"
+	"github.com/CezikLikeWhat/PRIR_Sorting/configuration"
 	"github.com/CezikLikeWhat/PRIR_Sorting/logger"
 	"golang.org/x/exp/slices"
 	"io"
@@ -12,31 +13,6 @@ import (
 	"runtime"
 	"sync"
 )
-
-const THRESHOLD int64 = 10_000_000
-
-type item struct {
-	value     int32
-	fileIndex int
-}
-
-type minHeap []item
-
-func (h minHeap) Len() int           { return len(h) }
-func (h minHeap) Less(i, j int) bool { return h[i].value < h[j].value }
-func (h minHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-
-func (h *minHeap) Push(x any) {
-	*h = append(*h, x.(item))
-}
-
-func (h *minHeap) Pop() any {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
-}
 
 func Sort(inputFileName string, outputFileName string, numberOfThreads int32) {
 	runtime.GOMAXPROCS(int(numberOfThreads))
@@ -53,7 +29,7 @@ func Sort(inputFileName string, outputFileName string, numberOfThreads int32) {
 
 	inputFile.Close()
 
-	if numberOfElements < THRESHOLD {
+	if numberOfElements < configuration.THRESHOLD {
 		fragment, _ := readFragment(inputFileName, 0, numberOfElements)
 		slices.Sort(fragment)
 		WriteDataToOutputFile(outputFileName, numberOfElements, fragment)
@@ -61,7 +37,7 @@ func Sort(inputFileName string, outputFileName string, numberOfThreads int32) {
 	}
 
 	var (
-		fragmentSize = THRESHOLD / (int64(numberOfThreads))
+		fragmentSize = configuration.THRESHOLD / (int64(numberOfThreads))
 		wg           sync.WaitGroup
 		tempFiles    []string
 	)
@@ -149,12 +125,12 @@ func mergeSortedFiles(tempFiles []string, outputFileName string, numberOfElement
 		files[i] = file
 	}
 
-	h := &minHeap{}
+	h := &configuration.MinHeap{}
 	heap.Init(h)
 	for i, file := range files {
 		var value int32
 		if err := binary.Read(file, binary.NativeEndian, &value); err == nil {
-			heap.Push(h, item{value, i})
+			heap.Push(h, configuration.Item{Value: value, FileIndex: i})
 		}
 	}
 
@@ -178,11 +154,11 @@ func mergeSortedFiles(tempFiles []string, outputFileName string, numberOfElement
 	}
 
 	for h.Len() > 0 {
-		minItem := heap.Pop(h).(item)
-		binary.Write(writer, binary.NativeEndian, minItem.value)
+		minItem := heap.Pop(h).(configuration.Item)
+		binary.Write(writer, binary.NativeEndian, minItem.Value)
 
-		if nextValue, err := readNext(readBuffers[minItem.fileIndex]); err == nil {
-			heap.Push(h, item{nextValue, minItem.fileIndex})
+		if nextValue, err := readNext(readBuffers[minItem.FileIndex]); err == nil {
+			heap.Push(h, configuration.Item{Value: nextValue, FileIndex: minItem.FileIndex})
 		}
 	}
 
@@ -197,94 +173,6 @@ func readNext(reader *bufio.Reader) (int32, error) {
 	var value int32
 	err := binary.Read(reader, binary.NativeEndian, &value)
 	return value, err
-}
-
-func mergeSort(slice []int32) {
-	if len(slice) <= 1 {
-		return
-	}
-
-	middle := len(slice) / 2
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		mergeSort(slice[:middle])
-	}()
-
-	go func() {
-		defer wg.Done()
-		mergeSort(slice[middle:])
-	}()
-
-	wg.Wait()
-	merge(slice, middle)
-}
-
-func merge(slice []int32, middle int) {
-	left := append([]int32(nil), slice[:middle]...)
-	right := append([]int32(nil), slice[middle:]...)
-
-	l, r := 0, 0
-	for i := 0; i < len(slice); i++ {
-		if l >= len(left) {
-			slice[i] = right[r]
-			r++
-			continue
-		}
-		if r >= len(right) {
-			slice[i] = left[l]
-			l++
-			continue
-		}
-		if left[l] < right[r] {
-			slice[i] = left[l]
-			l++
-		} else {
-			slice[i] = right[r]
-			r++
-		}
-	}
-}
-
-func quickSort(slice []int32, left, right int) {
-	if left < right {
-		// Partition the slice and get the pivot index
-		pivotIndex := partition(slice, left, right)
-
-		var wg sync.WaitGroup
-		wg.Add(2)
-
-		// Sort the left part in a new goroutine
-		go func() {
-			defer wg.Done()
-			quickSort(slice, left, pivotIndex-1)
-		}()
-
-		// Sort the right part in a new goroutine
-		go func() {
-			defer wg.Done()
-			quickSort(slice, pivotIndex+1, right)
-		}()
-
-		wg.Wait()
-	}
-}
-
-func partition(slice []int32, left, right int) int {
-	pivot := slice[right]
-	i := left - 1
-
-	for j := left; j < right; j++ {
-		if slice[j] < pivot {
-			i++
-			slice[i], slice[j] = slice[j], slice[i]
-		}
-	}
-
-	slice[i+1], slice[right] = slice[right], slice[i+1]
-	return i + 1
 }
 
 func sampleSort(slice []int32, bucketCount int) {

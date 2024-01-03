@@ -22,15 +22,20 @@ var verifyCmd = &cobra.Command{
 		}
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
-		isSortedCorrectly := Utils.VerifySortedFile(nameOfFileToVerify)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		isSortedCorrectly, err := Utils.VerifySortedFile(nameOfFileToVerify)
+		if err != nil {
+			return err
+		}
 
 		if isSortedCorrectly {
 			color.Green("The specified file (%s) is sorted correctly\n", nameOfFileToVerify)
-			return
+			return nil
 		}
 
 		color.Red("The specified file (%s) is NOT sorted correctly\n", nameOfFileToVerify)
+
+		return nil
 	},
 }
 

@@ -23,8 +23,13 @@ var generateCmd = &cobra.Command{
 		}
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
-		Utils.WriteToFile(nameOfInputFile, numberOfElements)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		err := Utils.GenerateInputBinaryFile(nameOfInputFile, numberOfElements)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }
 

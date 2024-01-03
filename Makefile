@@ -1,12 +1,14 @@
 
-input:
-	go run main.go input --number 100000000 --time
+generate:
+	go run main.go generate -n 1000000 -c
 
 sort:
-	go run main.go sort -t
+	go run main.go sort -c
 
 verify:
-	go run main.go verify -t
+	go run main.go verify -c
 
+clean-up:
+	rm input.bin output.bin
 
-all: input sort verify
+all: clean-up generate sort verify
