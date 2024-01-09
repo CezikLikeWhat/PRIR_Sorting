@@ -10,6 +10,7 @@ import (
 
 var (
 	numberOfThreads       int32
+	numberOfBuckets       int32
 	nameOfInputFileToSort string
 	nameOfOutputFile      string
 )
@@ -17,7 +18,7 @@ var (
 var sortCmd = &cobra.Command{
 	Use:          "sort [flags]",
 	Short:        "Command used to sort the transferred dataset.\nCommand is executed concurrently using sample sort and min heap.",
-	Example:      "go-sort sort -f input.bin -o output.bin -t 8",
+	Example:      "go-sort sort -f input.bin -o output.bin -t 8 -b 8",
 	Version:      "1.0.0",
 	SilenceUsage: true,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -26,8 +27,12 @@ var sortCmd = &cobra.Command{
 		}
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
-		Utils.Sort(nameOfInputFileToSort, nameOfOutputFile, numberOfThreads)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		err := Utils.Sort(nameOfInputFileToSort, nameOfOutputFile, numberOfThreads, numberOfBuckets)
+		if err != nil {
+			return err
+		}
+		return nil
 	},
 }
 
@@ -35,6 +40,7 @@ func init() {
 	RootCmd.AddCommand(sortCmd)
 
 	sortCmd.Flags().Int32VarP(&numberOfThreads, "threads", "t", int32(runtime.NumCPU()), "Number of threads")
+	sortCmd.Flags().Int32VarP(&numberOfBuckets, "buckets", "b", 8, "Number of buckets in sample sort")
 	sortCmd.Flags().StringVarP(&nameOfInputFileToSort, "file", "f", "input.bin", "Name of input file")
 	sortCmd.Flags().StringVarP(&nameOfOutputFile, "output", "o", "output.bin", "Name of output file")
 }
@@ -43,6 +49,11 @@ func validateSortArgs(cmd *cobra.Command) error {
 	threads, err := cmd.Flags().GetInt32("threads")
 	if err != nil || threads <= 0 {
 		return errors.New("invalid number of threads")
+	}
+
+	buckets, err := cmd.Flags().GetInt32("buckets")
+	if err != nil || buckets <= 0 {
+		return errors.New("invalid number of buckets")
 	}
 
 	inputFile, _ := cmd.Flags().GetString("file")

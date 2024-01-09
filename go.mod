@@ -3,12 +3,12 @@ module github.com/CezikLikeWhat/PRIR_Sorting
 go 1.21.4
 
 require (
+	github.com/fatih/color v1.16.0
 	github.com/spf13/cobra v1.8.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 )
 
 require (
-	github.com/fatih/color v1.16.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"container/heap"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"github.com/CezikLikeWhat/PRIR_Sorting/configuration"
-	"github.com/CezikLikeWhat/PRIR_Sorting/logger"
 	"golang.org/x/exp/slices"
 	"io"
 	"os"
@@ -14,7 +14,8 @@ import (
 	"sync"
 )
 
-func Sort(inputFileName string, outputFileName string, numberOfThreads int32) {
+// Sort - Function that is the main function dealing with sorting numbers from the given file
+func Sort(inputFileName string, outputFileName string, numberOfThreads int32, numberOfBuckets int32) error {
 	runtime.GOMAXPROCS(int(numberOfThreads))
 
 	inputFile, _ := os.Open(inputFileName)
@@ -24,20 +25,31 @@ func Sort(inputFileName string, outputFileName string, numberOfThreads int32) {
 	var numberOfElements int64
 	err := binary.Read(reader, binary.NativeEndian, &numberOfElements)
 	if err != nil {
-		logger.Fatal("Cannot read number of generated numbers from file | Error: %s", err)
+		return errors.New(fmt.Sprintf("Cannot read number of generated numbers from file | Error: %s", err))
 	}
 
 	inputFile.Close()
 
 	if numberOfElements < configuration.THRESHOLD {
-		fragment, _ := readFragment(inputFileName, 0, numberOfElements)
+		fragment, err := readFragment(inputFileName, 0, numberOfElements)
+		if err != nil {
+			return err
+		}
+
 		slices.Sort(fragment)
-		WriteDataToOutputFile(outputFileName, numberOfElements, fragment)
-		return
+
+		err = WriteDataToOutputFile(outputFileName, numberOfElements, fragment)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	var (
-		fragmentSize = configuration.THRESHOLD / (int64(numberOfThreads))
+		// TODO: TUTAJ ZMIENIC!!!
+		//fragmentSize = configuration.THRESHOLD / (int64(numberOfThreads) * 30)
+		fragmentSize = int64(125_000)
 		wg           sync.WaitGroup
 		tempFiles    []string
 	)
@@ -47,21 +59,31 @@ func Sort(inputFileName string, outputFileName string, numberOfThreads int32) {
 		go func(startIndex int64) {
 			defer wg.Done()
 			fragment, _ := readFragment(inputFileName, startIndex, fragmentSize)
-			//mergeSort(fragment)
-			//quickSort(fragment, 0, len(fragment)-1)
-			sampleSort(fragment, 8) // TODO: Dodać możliwość sterowania ilością kubełków i zdecydować czy wyjebać te dodatkowe algorytmy sortowania
+
+			sampleSort(fragment, numberOfBuckets)
+
 			filename, _ := writeSortedFragmentToTempFile(fragment, startIndex)
+
 			tempFiles = append(tempFiles, filename)
 		}(i)
 	}
 
 	wg.Wait()
 
-	mergeSortedFiles(tempFiles, outputFileName, numberOfElements)
+	err = mergeSortedFiles(tempFiles, outputFileName, numberOfElements)
+	if err != nil {
+		return err
+	}
 
-	removeTempFiles(tempFiles)
+	err = removeTempFiles(tempFiles)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
+// readFragment - Function designed to read a specific section of a file
 func readFragment(filename string, startIndex int64, fragmentSize int64) ([]int32, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -94,6 +116,7 @@ func readFragment(filename string, startIndex int64, fragmentSize int64) ([]int3
 	return fragment, nil
 }
 
+// writeSortedFragmentToTempFile - Function to save slice to temporary file
 func writeSortedFragmentToTempFile(fragment []int32, numberOfFile int64) (string, error) {
 	tempFileName := fmt.Sprintf("temp_files/temp_%d.bin", numberOfFile)
 	file, err := os.Create(tempFileName)
@@ -115,8 +138,10 @@ func writeSortedFragmentToTempFile(fragment []int32, numberOfFile int64) (string
 	return tempFileName, nil
 }
 
+// mergeSortedFiles - Function designed to merge data from multiple temporary files into an output file using a min-heap
 func mergeSortedFiles(tempFiles []string, outputFileName string, numberOfElements int64) error {
 	files := make([]*os.File, len(tempFiles))
+
 	for i, fileName := range tempFiles {
 		file, err := os.Open(fileName)
 		if err != nil {
@@ -145,7 +170,7 @@ func mergeSortedFiles(tempFiles []string, outputFileName string, numberOfElement
 
 	err = binary.Write(writer, binary.NativeEndian, numberOfElements)
 	if err != nil {
-		logger.Fatal("Error writing NumberOfElements | Error: %s", err)
+		return errors.New(fmt.Sprintf("Error writing number of elements to file | Error: %s", err))
 	}
 
 	readBuffers := make([]*bufio.Reader, len(files))
@@ -169,37 +194,36 @@ func mergeSortedFiles(tempFiles []string, outputFileName string, numberOfElement
 	return nil
 }
 
+// readNext - Function designed to read another value from a file
 func readNext(reader *bufio.Reader) (int32, error) {
 	var value int32
 	err := binary.Read(reader, binary.NativeEndian, &value)
 	return value, err
 }
 
-func sampleSort(slice []int32, bucketCount int) {
+// sampleSort - Function designed to perform a sample sort
+func sampleSort(slice []int32, bucketCount int32) {
 	if len(slice) <= 1 || bucketCount <= 1 {
 		slices.Sort(slice)
 		return
 	}
 
-	// Wybór próbek i sortowanie ich
 	samples := selectSamples(slice, bucketCount)
 	slices.Sort(samples)
 
-	// Podział na kubełki
 	buckets := make([][]int32, bucketCount+1)
 	for i := range buckets {
 		buckets[i] = make([]int32, 0)
 	}
 
 	for _, v := range slice {
-		idx := binarySearchInt32(samples, v)
+		idx := binarySearch(samples, v)
 		if idx == len(samples) {
 			idx--
 		}
 		buckets[idx] = append(buckets[idx], v)
 	}
 
-	// Sortowanie kubełków równolegle
 	var wg sync.WaitGroup
 	for i := range buckets {
 		wg.Add(1)
@@ -210,7 +234,6 @@ func sampleSort(slice []int32, bucketCount int) {
 	}
 	wg.Wait()
 
-	// Łączenie posortowanych kubełków
 	idx := 0
 	for _, bucket := range buckets {
 		for _, v := range bucket {
@@ -220,16 +243,19 @@ func sampleSort(slice []int32, bucketCount int) {
 	}
 }
 
-func selectSamples(slice []int32, count int) []int32 {
-	step := len(slice) / count
+// selectSamples - Function that has the task of selecting samples for the sample sort algorithm
+func selectSamples(slice []int32, count int32) []int32 {
+	sliceLength := int32(len(slice))
+	step := sliceLength / count
 	samples := make([]int32, 0, count)
-	for i := 0; i < len(slice); i += step {
+	for i := int32(0); i < sliceLength; i += step {
 		samples = append(samples, slice[i])
 	}
 	return samples
 }
 
-func binarySearchInt32(slice []int32, target int32) int {
+// binarySearch - Function designed to find a target in a sorted slice (binary search algorithm)
+func binarySearch(slice []int32, target int32) int {
 	left, right := 0, len(slice)
 	for left < right {
 		mid := left + (right-left)/2
@@ -242,8 +268,13 @@ func binarySearchInt32(slice []int32, target int32) int {
 	return left
 }
 
-func removeTempFiles(files []string) {
+// removeTempFiles - Function designed to delete temporary files created for sorting purposes
+func removeTempFiles(files []string) error {
 	for _, filename := range files {
-		os.Remove(filename)
+		err := os.Remove(filename)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Cannot close file %s | Error: %s", filename, err))
+		}
 	}
+	return nil
 }

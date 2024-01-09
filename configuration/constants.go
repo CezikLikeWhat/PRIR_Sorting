@@ -2,10 +2,9 @@ package configuration
 
 import "time"
 
-const THRESHOLD int64 = 10_000_000
+const THRESHOLD int64 = 1_000_000
 
 var (
-	IsDebugMode   = false
 	TimeMeasuring = false
 	AppTimer      = Timer{}
 )

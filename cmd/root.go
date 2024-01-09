@@ -42,8 +42,6 @@ Implementations can be found at: https://github.com/CezikLikeWhat/PRIR_Sorting`,
 }
 
 func init() {
-
-	RootCmd.PersistentFlags().BoolVarP(&configuration.IsDebugMode, "debug", "d", false, "Run command with debug messages")
 	RootCmd.PersistentFlags().BoolVarP(&configuration.TimeMeasuring, "clock", "c", false, "Run command with time measuring")
 }
 
