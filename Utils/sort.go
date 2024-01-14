@@ -47,12 +47,10 @@ func Sort(inputFileName string, outputFileName string, numberOfThreads int32, nu
 	}
 
 	var (
-		// TODO: TUTAJ ZMIENIC!!!
-		//fragmentSize = configuration.THRESHOLD / (int64(numberOfThreads) * 30)
-		fragmentSize = int64(125_000)
+		fragmentSize = configuration.THRESHOLD
 		wg           sync.WaitGroup
-		tempFiles    []string
 	)
+	tempFiles := make(chan string, numberOfElements/fragmentSize)
 
 	for i := int64(0); i < numberOfElements; i += fragmentSize {
 		wg.Add(1)
@@ -64,18 +62,26 @@ func Sort(inputFileName string, outputFileName string, numberOfThreads int32, nu
 
 			filename, _ := writeSortedFragmentToTempFile(fragment, startIndex)
 
-			tempFiles = append(tempFiles, filename)
+			tempFiles <- filename
 		}(i)
 	}
 
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(tempFiles)
+	}()
 
-	err = mergeSortedFiles(tempFiles, outputFileName, numberOfElements)
+	var filesNames []string
+	for filename := range tempFiles {
+		filesNames = append(filesNames, filename)
+	}
+
+	err = mergeSortedFiles(filesNames, outputFileName, numberOfElements)
 	if err != nil {
 		return err
 	}
 
-	err = removeTempFiles(tempFiles)
+	err = removeTempFiles(filesNames)
 	if err != nil {
 		return err
 	}
@@ -91,6 +97,8 @@ func readFragment(filename string, startIndex int64, fragmentSize int64) ([]int3
 	}
 	defer file.Close()
 
+	reader := bufio.NewReader(file)
+
 	sizeOfInt32 := int64(binary.Size(int32(0)))
 	sizeOfInt64 := int64(binary.Size(int64(0)))
 
@@ -103,7 +111,7 @@ func readFragment(filename string, startIndex int64, fragmentSize int64) ([]int3
 	fragment := make([]int32, 0, fragmentSize)
 	var currentValue int32
 	for i := int64(0); i < fragmentSize; i++ {
-		err = binary.Read(file, binary.NativeEndian, &currentValue)
+		err = binary.Read(reader, binary.NativeEndian, &currentValue)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -141,6 +149,7 @@ func writeSortedFragmentToTempFile(fragment []int32, numberOfFile int64) (string
 // mergeSortedFiles - Function designed to merge data from multiple temporary files into an output file using a min-heap
 func mergeSortedFiles(tempFiles []string, outputFileName string, numberOfElements int64) error {
 	files := make([]*os.File, len(tempFiles))
+	readBuffers := make([]*bufio.Reader, len(files))
 
 	for i, fileName := range tempFiles {
 		file, err := os.Open(fileName)
@@ -148,13 +157,14 @@ func mergeSortedFiles(tempFiles []string, outputFileName string, numberOfElement
 			return err
 		}
 		files[i] = file
+		readBuffers[i] = bufio.NewReader(file)
 	}
 
 	h := &configuration.MinHeap{}
 	heap.Init(h)
-	for i, file := range files {
+	for i, reader := range readBuffers {
 		var value int32
-		if err := binary.Read(file, binary.NativeEndian, &value); err == nil {
+		if err := binary.Read(reader, binary.NativeEndian, &value); err == nil {
 			heap.Push(h, configuration.Item{Value: value, FileIndex: i})
 		}
 	}
@@ -171,11 +181,6 @@ func mergeSortedFiles(tempFiles []string, outputFileName string, numberOfElement
 	err = binary.Write(writer, binary.NativeEndian, numberOfElements)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Error writing number of elements to file | Error: %s", err))
-	}
-
-	readBuffers := make([]*bufio.Reader, len(files))
-	for i, file := range files {
-		readBuffers[i] = bufio.NewReader(file)
 	}
 
 	for h.Len() > 0 {

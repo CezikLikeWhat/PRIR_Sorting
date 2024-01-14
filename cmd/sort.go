@@ -39,7 +39,7 @@ var sortCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(sortCmd)
 
-	sortCmd.Flags().Int32VarP(&numberOfThreads, "threads", "t", int32(runtime.NumCPU()), "Number of threads")
+	sortCmd.Flags().Int32VarP(&numberOfThreads, "threads", "t", int32(runtime.NumCPU()), "Number of threads used in Go environment")
 	sortCmd.Flags().Int32VarP(&numberOfBuckets, "buckets", "b", 8, "Number of buckets in sample sort")
 	sortCmd.Flags().StringVarP(&nameOfInputFileToSort, "file", "f", "input.bin", "Name of input file")
 	sortCmd.Flags().StringVarP(&nameOfOutputFile, "output", "o", "output.bin", "Name of output file")
