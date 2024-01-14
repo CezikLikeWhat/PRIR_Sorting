@@ -22,14 +22,10 @@ build-linux: # Build on Linux
 build: build-mac build-linux build-windows # build application on MacOS, Linux and Windows
 
 generate: # Generate example file
-	#go run main.go generate -n 500000000 -c
-	go run main.go generate -n 19999999 -c
+	go run main.go generate -n 20000000 -c
 
-sort: # Sort with default arguments
+sort: # Sort with example arguments
 	go run main.go sort -c -b 8 -t 8
-	go run main.go sort -c -b 16 -t 8
-	go run main.go sort -c -b 24 -t 8
-	go run main.go sort -c -b 32 -t 8
 
 verify: # Verify with default arguments
 	go run main.go verify -c
