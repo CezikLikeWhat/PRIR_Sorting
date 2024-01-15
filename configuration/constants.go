@@ -2,11 +2,10 @@ package configuration
 
 import "time"
 
-const THRESHOLD int64 = 10_000_000
-
 var (
-	TimeMeasuring = false
-	AppTimer      = Timer{}
+	TimeMeasuring bool  = false
+	AppTimer      Timer = Timer{}
+	THRESHOLD     int64 = 10_000_000
 )
 
 type Timer struct {

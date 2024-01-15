@@ -81,11 +81,6 @@ func Sort(inputFileName string, outputFileName string, numberOfThreads int32, nu
 		return err
 	}
 
-	err = removeTempFiles(filesNames)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -194,6 +189,10 @@ func mergeSortedFiles(tempFiles []string, outputFileName string, numberOfElement
 
 	for _, file := range files {
 		file.Close()
+		err := os.Remove(file.Name())
+		if err != nil {
+			return errors.New(fmt.Sprintf("Cannot close file %s | Error: %s", file.Name(), err))
+		}
 	}
 
 	return nil
@@ -271,15 +270,4 @@ func binarySearch(slice []int32, target int32) int {
 		}
 	}
 	return left
-}
-
-// removeTempFiles - Function designed to delete temporary files created for sorting purposes
-func removeTempFiles(files []string) error {
-	for _, filename := range files {
-		err := os.Remove(filename)
-		if err != nil {
-			return errors.New(fmt.Sprintf("Cannot close file %s | Error: %s", filename, err))
-		}
-	}
-	return nil
 }

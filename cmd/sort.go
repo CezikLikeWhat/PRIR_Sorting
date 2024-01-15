@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"github.com/CezikLikeWhat/PRIR_Sorting/Utils"
+	"github.com/CezikLikeWhat/PRIR_Sorting/configuration"
 	"github.com/spf13/cobra"
 	"os"
 	"runtime"
@@ -41,6 +42,7 @@ func init() {
 
 	sortCmd.Flags().Int32VarP(&numberOfThreads, "threads", "t", int32(runtime.NumCPU()), "Number of threads used in Go environment")
 	sortCmd.Flags().Int32VarP(&numberOfBuckets, "buckets", "b", 8, "Number of buckets in sample sort")
+	sortCmd.Flags().Int64VarP(&configuration.THRESHOLD, "size", "s", int64(10_000_000), "Size of fragment of data in every goroutine")
 	sortCmd.Flags().StringVarP(&nameOfInputFileToSort, "file", "f", "input.bin", "Name of input file")
 	sortCmd.Flags().StringVarP(&nameOfOutputFile, "output", "o", "output.bin", "Name of output file")
 }
@@ -54,6 +56,11 @@ func validateSortArgs(cmd *cobra.Command) error {
 	buckets, err := cmd.Flags().GetInt32("buckets")
 	if err != nil || buckets <= 0 {
 		return errors.New("invalid number of buckets")
+	}
+
+	size, err := cmd.Flags().GetInt64("size")
+	if err != nil || size <= 0 {
+		return errors.New("invalid size of fragment data")
 	}
 
 	inputFile, _ := cmd.Flags().GetString("file")

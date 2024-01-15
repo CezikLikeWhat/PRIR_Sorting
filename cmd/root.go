@@ -15,7 +15,6 @@ var RootCmd = &cobra.Command{
 	Long: `Go-Sort is a tool produced for PRiR (UMK) classes.
 Its functionalities are:
 	- generation of a sample file
-	- single-threaded sorting
 	- multi-threaded sorting
 	- sorting verification
 Implementations can be found at: https://github.com/CezikLikeWhat/PRIR_Sorting`,
