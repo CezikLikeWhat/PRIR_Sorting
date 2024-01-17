@@ -15,8 +15,8 @@ import (
 )
 
 // Sort - Function that is the main function dealing with sorting numbers from the given file
-func Sort(inputFileName string, outputFileName string, numberOfThreads int32, numberOfBuckets int32) error {
-	runtime.GOMAXPROCS(int(numberOfThreads))
+func Sort(inputFileName string, outputFileName string, numberOfCPUs int32, numberOfBuckets int32) error {
+	runtime.GOMAXPROCS(int(numberOfCPUs))
 
 	inputFile, _ := os.Open(inputFileName)
 

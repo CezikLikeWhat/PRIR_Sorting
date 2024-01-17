@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	numberOfThreads       int32
+	numberOfCPUs          int32
 	numberOfBuckets       int32
 	nameOfInputFileToSort string
 	nameOfOutputFile      string
@@ -29,7 +29,7 @@ var sortCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := Utils.Sort(nameOfInputFileToSort, nameOfOutputFile, numberOfThreads, numberOfBuckets)
+		err := Utils.Sort(nameOfInputFileToSort, nameOfOutputFile, numberOfCPUs, numberOfBuckets)
 		if err != nil {
 			return err
 		}
@@ -40,7 +40,7 @@ var sortCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(sortCmd)
 
-	sortCmd.Flags().Int32VarP(&numberOfThreads, "threads", "t", int32(runtime.NumCPU()), "Number of threads used in Go environment")
+	sortCmd.Flags().Int32VarP(&numberOfCPUs, "cpu", "t", int32(runtime.NumCPU()), "Number of CPU's used in Go environment")
 	sortCmd.Flags().Int32VarP(&numberOfBuckets, "buckets", "b", 8, "Number of buckets in sample sort")
 	sortCmd.Flags().Int64VarP(&configuration.THRESHOLD, "size", "s", int64(10_000_000), "Size of fragment of data in every goroutine")
 	sortCmd.Flags().StringVarP(&nameOfInputFileToSort, "file", "f", "input.bin", "Name of input file")
@@ -48,9 +48,9 @@ func init() {
 }
 
 func validateSortArgs(cmd *cobra.Command) error {
-	threads, err := cmd.Flags().GetInt32("threads")
-	if err != nil || threads <= 0 {
-		return errors.New("invalid number of threads")
+	cpus, err := cmd.Flags().GetInt32("cpu")
+	if err != nil || cpus <= 0 {
+		return errors.New("invalid number of CPU's")
 	}
 
 	buckets, err := cmd.Flags().GetInt32("buckets")
