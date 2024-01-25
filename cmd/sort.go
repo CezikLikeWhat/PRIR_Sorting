@@ -14,6 +14,7 @@ var (
 	numberOfBuckets       int32
 	nameOfInputFileToSort string
 	nameOfOutputFile      string
+	inMemory              bool
 )
 
 var sortCmd = &cobra.Command{
@@ -29,7 +30,13 @@ var sortCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := Utils.Sort(nameOfInputFileToSort, nameOfOutputFile, numberOfCPUs, numberOfBuckets)
+		var err error
+		if inMemory {
+			err = Utils.SortInMemory(nameOfInputFileToSort, nameOfOutputFile, numberOfCPUs, numberOfBuckets)
+		} else {
+			err = Utils.Sort(nameOfInputFileToSort, nameOfOutputFile, numberOfCPUs, numberOfBuckets)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -45,6 +52,7 @@ func init() {
 	sortCmd.Flags().Int64VarP(&configuration.THRESHOLD, "size", "s", int64(10_000_000), "Size of fragment of data in every goroutine")
 	sortCmd.Flags().StringVarP(&nameOfInputFileToSort, "file", "f", "input.bin", "Name of input file")
 	sortCmd.Flags().StringVarP(&nameOfOutputFile, "output", "o", "output.bin", "Name of output file")
+	sortCmd.Flags().BoolVarP(&inMemory, "in-memory", "m", false, "Read all data into memory (without k-way merge algorithm)")
 }
 
 func validateSortArgs(cmd *cobra.Command) error {

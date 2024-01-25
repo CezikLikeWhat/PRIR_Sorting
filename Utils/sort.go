@@ -84,6 +84,40 @@ func Sort(inputFileName string, outputFileName string, numberOfCPUs int32, numbe
 	return nil
 }
 
+func SortInMemory(inputFileName string, outputFileName string, numberOfCPUs int32, numberOfBuckets int32) error {
+	runtime.GOMAXPROCS(int(numberOfCPUs))
+
+	inputFile, _ := os.Open(inputFileName)
+	defer inputFile.Close()
+
+	reader := bufio.NewReader(inputFile)
+
+	var numberOfElements int64
+	err := binary.Read(reader, binary.NativeEndian, &numberOfElements)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Cannot read number of generated numbers from file | Error: %s", err))
+	}
+
+	fragment := make([]int32, 0, numberOfElements)
+	var currentValue int32
+	for i := int64(0); i < numberOfElements; i++ {
+		err = binary.Read(reader, binary.NativeEndian, &currentValue)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Unknown error during reading file | Error: %s", err))
+		}
+		fragment = append(fragment, currentValue)
+	}
+
+	sampleSort(fragment, numberOfBuckets)
+
+	err = WriteDataToOutputFile(outputFileName, numberOfElements, fragment)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // readFragment - Function designed to read a specific section of a file
 func readFragment(filename string, startIndex int64, fragmentSize int64) ([]int32, error) {
 	file, err := os.Open(filename)
