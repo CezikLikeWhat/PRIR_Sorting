@@ -256,8 +256,8 @@ func sampleSort(slice []int32, bucketCount int32) {
 
 	for _, v := range slice {
 		idx := binarySearch(samples, v)
-		if idx == len(samples) {
-			idx--
+		if idx >= len(buckets) {
+			idx = len(buckets) - 1
 		}
 		buckets[idx] = append(buckets[idx], v)
 	}
